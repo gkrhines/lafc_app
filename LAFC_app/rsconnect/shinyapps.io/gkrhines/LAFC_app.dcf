@@ -1,0 +1,13 @@
+name: LAFC_app
+title: LAFC_app
+username:
+account: gkrhines
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5577554
+bundleId: 5540596
+url: https://gkrhines.shinyapps.io/LAFC_app/
+when: 1643930063.67265
+lastSyncTime: 1643930063.67266
+asMultiple: FALSE
+asStatic: FALSE
