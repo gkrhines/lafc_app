@@ -8,16 +8,9 @@ library(ggtext)
 thematic::thematic_shiny(font = "auto")
 library(ggplot2)
 library(knitr)
+library(dplyr)
 
-
-#From https://community.rstudio.com/t/read-xlsx-from-github/9386
-loadWorkbook_url <- function(url) {
-  temp_file <- tempfile(fileext = ".xlsx")
-  download.file(url = url, destfile = temp_file, mode = "wb", quiet = TRUE)
-  loadWorkbook(temp_file)
-}
-
-
+#The function to generate a vector of "week" values based on an inserted number of days.
 generate_weeks <- function(x = 300)
 {
   output <- c()
@@ -39,6 +32,23 @@ generate_weeks <- function(x = 300)
   return(output)
 }
 
+#The function to add a team total to the inserted data frame.
+add_team_total <- function(data)
+{
+  data <- data %>% mutate("TEAM" = round(rowSums(as.data.frame(sapply(data[,c(2:ncol(data))],as.numeric))), digits = 1))
+  
+  return(data)
+}
+
+#The function to add a team total to the inserted data frame.
+add_team_avg <- function(data)
+{
+  data <- data %>% mutate("TEAM" = round(rowSums(as.data.frame(sapply(data[,c(2:ncol(data))],as.numeric)))/(ncol(data) - 1), digits = 1))
+  
+  return(data)
+}
+
+#The funtion to convert RPE data to Training Load data.
 get_tl <- function(cleaned_rpe_data)
 {
   for(i in 1:length(cleaned_rpe_data$`SESSION DURATION`))
@@ -122,15 +132,177 @@ clean_data <- function(rpe_data)
 }
 
 
-get_weekly_average <- function(test)
+get_weekly_sum <- function(data)
 {
+  #Replacing NA values
+  data[is.na(data)] <- 0
+  
   output <- NA
   
   #Looping through each week
-  for(i in 1:max(as.numeric(test[c(1),])))
+  for(i in 1:max(as.numeric(data[c(1),])))
   {
     #Getting only the columns that represent the week in focus
-    tempData <- test[,which(as.numeric(test[c(1),]) == i)]
+    tempData <- data[,which(as.numeric(data[c(1),]) == i)]
+    
+    #Getting the average for each row 
+    weeklySums <- round(rowSums(as.data.frame(sapply(tempData[c(4:34),],as.numeric))), digits = 1)
+    
+    #Adding the calculated average for each week to the output
+    if(i == 1)
+    {
+      output <- data.frame(weeklySums)
+    }
+    else
+    {
+      output <- cbind(output, weeklySums)
+    }
+  }
+  
+  #Replacing NA values
+  output[is.na(output)] <- 0
+  
+  #Finally, let's rename the  index of the data frame we just created and add a column to define the week.
+  rownames(output) <- c("PLAYER_1",
+                        "PLAYER_2",
+                        "PLAYER_3",
+                        "PLAYER_4",
+                        "PLAYER_5",
+                        "PLAYER_6",
+                        "PLAYER_7",
+                        "PLAYER_8",
+                        "PLAYER_9",
+                        "PLAYER_10",
+                        "PLAYER_11",
+                        "PLAYER_12",
+                        "PLAYER_13",
+                        "PLAYER_14",
+                        "PLAYER_15",
+                        "PLAYER_16",
+                        "PLAYER_17",
+                        "PLAYER_18",
+                        "PLAYER_19",
+                        "PLAYER_20",
+                        "PLAYER_21",
+                        "PLAYER_22",
+                        "PLAYER_23",
+                        "PLAYER_24",
+                        "PLAYER_25",
+                        "PLAYER_26",
+                        "PLAYER_27",
+                        "PLAYER_28",
+                        "PLAYER_29",
+                        "PLAYER_30",
+                        "PLAYER_31")
+  
+  output <- data.frame(t(output))
+  
+  output <- cbind(Week = c("1",
+                           "2",
+                           "3",
+                           "4",
+                           "5",
+                           "6",
+                           "7",
+                           "8",
+                           "9",
+                           "10",
+                           "11",
+                           "12",
+                           "13",
+                           "14",
+                           "15",
+                           "16",
+                           "17",
+                           "18",
+                           "19",
+                           "20",
+                           "21",
+                           "22",
+                           "23",
+                           "24",
+                           "25",
+                           "26",
+                           "27",
+                           "28",
+                           "29",
+                           "30",
+                           "31",
+                           "32",
+                           "33",
+                           "34",
+                           "35",
+                           "36",
+                           "37",
+                           "38",
+                           "39",
+                           "40",
+                           "41",
+                           "42",
+                           "43"), output)
+  
+  output$Week <- factor(output$Week , levels=c("1",
+                                               "2",
+                                               "3",
+                                               "4",
+                                               "5",
+                                               "6",
+                                               "7",
+                                               "8",
+                                               "9",
+                                               "10",
+                                               "11",
+                                               "12",
+                                               "13",
+                                               "14",
+                                               "15",
+                                               "16",
+                                               "17",
+                                               "18",
+                                               "19",
+                                               "20",
+                                               "21",
+                                               "22",
+                                               "23",
+                                               "24",
+                                               "25",
+                                               "26",
+                                               "27",
+                                               "28",
+                                               "29",
+                                               "30",
+                                               "31",
+                                               "32",
+                                               "33",
+                                               "34",
+                                               "35",
+                                               "36",
+                                               "37",
+                                               "38",
+                                               "39",
+                                               "40",
+                                               "41",
+                                               "42",
+                                               "43"))
+  
+  row.names(output) <- NULL
+  
+  return(output)
+}
+
+#The function to get the players'/team's weekly average for a number of metrics.
+get_weekly_average <- function(data)
+{
+  #Replacing NA values
+  data[is.na(data)] <- 0
+  
+  output <- NA
+  
+  #Looping through each week
+  for(i in 1:max(as.numeric(data[c(1),])))
+  {
+    #Getting only the columns that represent the week in focus
+    tempData <- data[,which(as.numeric(data[c(1),]) == i)]
     
     #Getting the average for each row 
     weeklyAvgs <- round(rowMeans(as.data.frame(sapply(tempData[c(4:34),],as.numeric))), digits = 1)
@@ -277,6 +449,34 @@ get_weekly_average <- function(test)
   return(output)
 }
 
+#The function to get the percentage change in each player/the team's training load.
+get_percentage_change <- function(data)
+{
+  #copying the inputted data
+  output <- data
+  
+  #Looping through each column
+  for(i in 2:ncol(output))
+  {
+    #Looping through each row
+    for(j in 2:nrow(output))
+    {
+      output[c(j),c(i)] <- round((data[c(j),c(i)]/data[c(j - 1),c(i)] - 1) * 100, digits = 1)
+    }
+  }
+  
+  #Setting the first row to zero in place of a NULL values
+  output[c(1),c(2:ncol(output))] <- 0
+  
+  #Replacing null values with 0
+  output[is.na(output)] <- 0
+  
+  #Replacing Inf values with 100
+  output[output == Inf] <- 100
+  
+  return(output)
+}
+
 
 #Reading in the provided data.
 rpe_data <- read.xlsx("./Data/LAFC data assignment .xlsx")
@@ -287,10 +487,14 @@ rpe_data <- data.frame(t(rpe_data))
 #Cleaning the provided data to put it into a usable format.
 cleaned_data <- clean_data(rpe_data)
 
-#
-avg_rpe_data <- get_weekly_average(cleaned_data[[1]])
+#Getting the weekly averages, sums, and percentage change statistics for each of the necessary data sets.
+avg_rpe_data <- add_team_avg(get_weekly_average(cleaned_data[[1]]))
 
-avg_tl_data <- get_weekly_average(cleaned_data[[2]])
+sum_tl_data <- add_team_total(get_weekly_sum(cleaned_data[[2]]))
+
+avg_tl_data <- add_team_avg(get_weekly_average(cleaned_data[[2]]))
+
+pctcng_tl_data <- get_percentage_change(sum_tl_data)
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #User Interface
@@ -315,17 +519,18 @@ intro_panel <- tabPanel(
   br(), #Space
   
   p("Next, I chose to present the data as a weekly average of each player's exertion to avoid presenting the coaching
-    staff with a complex graphic of over 300 data points. Additionally, I chose to use a simple bar graph because it is
+    staff with a complex graphic of over 300 data points in each graph. Additionally, I chose to use a simple bar graph because it is
     a graphic anyone on LAFC's staff can digest. Though these decisions resulted in the loss of the context of what type of 
     session (Recovery, Match, etc.) each score was tied to, I believe it was the most effective method of delivering 
     actionable information."),
   
   br(), #Space
   
-  p("To add valuable context to the graphs, I ploted three lines to designate which scores should be considered
+  p("To add valuable context to the graphs that present averages, I ploted three lines to designate which scores should be considered
     low, average, and high exertion weeks. High exertion weeks were at least one standard deviation more stressful
     than the average, while low exertion weeks were one standard deviation less. The inclusion of such context enables this
-    app to be a tool to start data-driven conversations with the LAFC's sport scientists"),
+    app to be a tool to start data-driven conversations with the LAFC's sport scientists on outliers in specific player's 
+    training load. For example, Player 21's Week 20 and Player 30's Week 31 stand out."),
   
   br(), #Space
   
@@ -347,31 +552,6 @@ intro_panel <- tabPanel(
 )
 
 # Page 2 - RPE Visualization ----------------------------------------
-select_values <- colnames(avg_rpe_data)
-select_values <- select_values[! select_values %in% c('Week')] # remove unwanted columns
-
-sidebar_content <- sidebarPanel(
-  selectInput(
-    "y_var",
-    label = "Select which player's exertion you would like to analyze.",
-    choices = select_values,
-    selected = 'PLAYER_1'
-  )
-)
-
-main_content <- mainPanel(
-  plotOutput("plot")
-)
-
-second_panel <- tabPanel(
-  "Rating of Percieved Exertion",
-  titlePanel("Player Exertion Visiualization Tool"),
-  sidebarLayout(
-    sidebar_content, main_content
-  )
-)
-
-# Page 3 - TL Visualization ----------------------------------------
 select_values <- colnames(avg_tl_data)
 select_values <- select_values[! select_values %in% c('Week')] # remove unwanted columns
 
@@ -380,11 +560,14 @@ sidebar_content <- sidebarPanel(
                         "y_var",
                         label = "Select which player's exertion you would like to analyze.",
                         choices = select_values,
-                        selected = 'PLAYER.1'
+                        selected = 'TEAM'
                       ),
                       radioButtons("metric","Choose which metric to use:",
-                                   choices = c("Rating of Percieved Exertion","Training Load"),
-                                   selected = "Rating of Percieved Exertion")
+                                   choices = c("Avg. Rating of Percieved Exertion",
+                                               "Avg. Training Load",
+                                               "Total Training Load", 
+                                               "Percentage Change Training Load"),
+                                   selected = "Avg. Rating of Percieved Exertion")
                       
 )
 
@@ -394,7 +577,7 @@ main_content <- mainPanel(
 
 second_panel <- tabPanel(
   "Visualization",
-  titlePanel("What has each player's average exertion been over the weeks?"),
+  titlePanel("What has each player's physical exertion been over the weeks?"),
   sidebarLayout(
     sidebar_content, main_content
   )
@@ -417,7 +600,7 @@ server <- function(input, output) {
   bs_themer()
   
   observe({
-      if(input$metric == "Rating of Percieved Exertion")
+      if(input$metric == "Avg. Rating of Percieved Exertion")
       {
           output$plot <- renderPlot({
             
@@ -434,11 +617,11 @@ server <- function(input, output) {
               geom_vline(xintercept = 1.28, linetype='dashed', color=c('green2')) +
               geom_richtext(aes(x= 1.3, y=38, label= "**Low Player Exertion**"),
                             size=4, col = 'green2', fill = 'black') +
-              labs(title = "Weekly Rating of Percieved Exertion")
+              labs(title = "Weekly Average Rating of Percieved Exertion")
         
             })
       }
-      else
+      else if (input$metric == "Avg. Training Load")
       {
         output$plot <- renderPlot({
           
@@ -455,10 +638,34 @@ server <- function(input, output) {
             geom_vline(xintercept = 120, linetype='dashed', color=c('green2')) +
             geom_richtext(aes(x= 120.02, y=38, label= "**Low Player Exertion**"),
                           size=4, col = 'green2', fill = 'black') +
-            labs(title = "Weekly Training Load")
+            labs(title = "Weekly Average Training Load")
           
         })
-     }
+      }
+      else if (input$metric == "Total Training Load")
+      {
+        output$plot <- renderPlot({
+          
+          ggplot(data=sum_tl_data, aes_string(x=input$y_var, y="Week")) +
+            geom_bar(stat="identity", width=0.8, fill="white") +
+            scale_x_continuous(name = "Player's Weekly Total TL") +
+            labs(x=input$y_var, y="Week") + coord_flip() +
+            labs(title = "Weekly Total Training Load")
+          
+        })
+      }
+      else if (input$metric == "Percentage Change Training Load")
+      {
+        output$plot <- renderPlot({
+          
+          ggplot(data=pctcng_tl_data, aes_string(x=input$y_var, y="Week")) +
+            geom_bar(stat="identity", width=0.8, fill="white") +
+            scale_x_continuous(name = "Player's Weekly Percentage Change in TL") +
+            labs(x=input$y_var, y="Week") + coord_flip() +
+            labs(title = "Weekly Percentage Change in Training Load")
+          
+        })
+      }
   })
 }
 
